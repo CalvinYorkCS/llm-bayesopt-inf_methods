@@ -19,7 +19,8 @@ from foundation_models import (
     get_gpt2_tokenizer,
     get_llama2_tokenizer,
 )
-from llm_bayesopt import LoRALLMBayesOpt
+from llm_bayesopt import LoRALLMBayesOpt, inference_method
+from llm_bayesopt.laplace_inference import LaplaceInference
 from bayesopt.acqf import ucb, ei, thompson_sampling
 from problems.data_processor import (
     RedoxDataProcessor,
@@ -270,12 +271,18 @@ if args.problem == "photoswitch":
 APPEND_EOS = args.foundation_model != "molformer" and (
     "t5" not in args.foundation_model
 )
+
 model = LoRALLMBayesOpt(
     get_model,
     dataset_train,
     data_processor,
+    LaplaceInference(
+        laplace_config=config, 
+        device='cuda', 
+        dtype='float32', 
+        append_eos=APPEND_EOS
+        ),
     dtype="float32",
-    laplace_config=config,
     append_eos=APPEND_EOS,
 )
 
