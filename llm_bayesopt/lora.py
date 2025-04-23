@@ -10,7 +10,7 @@ from torch import nn
 import pandas as pd
 from .base import LLMBayesOpt
 from problems.data_processor import DataProcessor
-from inference_method import Inference
+from llm_bayesopt.inference_method import Inference
 
 from typing import *
 
@@ -21,9 +21,12 @@ class LoRALLMBayesOpt(LLMBayesOpt):
                  data_processor: DataProcessor,
                  inference: Inference,
                  device="cuda", dtype="float32",
-                 append_eos=True):
+                 append_eos=True,
+                 bnn=None):
+        self.dtype = dtype
         self.inference = inference
-        super().__init__(get_model, training_set, data_processor, device)  # drop bnn/laplace_config
+        self.append_eos = append_eos
+        super().__init__(get_model, training_set, data_processor, bnn, device)  # drop bnn/laplace_config
 
     def train_model(self):
         train_loader = self.data_processor.get_dataloader(

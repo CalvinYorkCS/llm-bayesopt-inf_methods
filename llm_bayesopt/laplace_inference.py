@@ -1,10 +1,11 @@
 from laplace import Laplace
-from inference_method import Inference
+from llm_bayesopt.inference_method import Inference
 from laplace.marglik_training import marglik_training
 import torch
 import torch.nn as nn
 from torch import optim
-from tqdm import tqdm
+import tqdm
+from contextlib import nullcontext
 from transformers import get_scheduler
 from utils.configs import LaplaceConfig
 import math
@@ -13,8 +14,21 @@ class LaplaceInference(Inference):
     def __init__(self, laplace_config: LaplaceConfig, device, dtype, append_eos):
         super().__init__(laplace_config, device, dtype)
         self.append_eos = append_eos
-        self.self.cfg = laplace_config
+        self.cfg = laplace_config
         # set up amp context, dtype mapping, etc.
+        self.dtype = dtype
+        self.ptdtype = {
+            "float32": torch.float32,
+            "bfloat16": torch.bfloat16,
+            "float16": torch.float16,
+        }[dtype]
+        self.ctx = (
+            nullcontext()
+            if device == "cpu"
+            else torch.amp.autocast(device_type="cuda", dtype=self.ptdtype)
+        )
+        self.enable_grad_scaler = dtype in ["float16", "bfloat16"]
+        self.append_eos = append_eos
 
     def train(self, get_model, train_loader):
         self.cfg = self.config
@@ -55,7 +69,6 @@ class LaplaceInference(Inference):
         self.bnn = la
 
     def _posthoc_laplace(self, get_model, train_loader):
-        self.cfg = self.laplace_config
         model = get_model().to(self.device)  # Ensure that the base net is re-initialized - changed from self.get_model()...
 
         model.train()
