@@ -43,8 +43,8 @@ class T5Regressor(nn.Module):
         feat = self.forward_features(data)
         return self.head(feat)
 
-    def forward_features(self, data):
-        input_ids = data # TODO Changing to input_ids = data from input_ids = data["input_ids"] - here it's a tensor not a dictionary
+    def forward_features(self, data): 
+        input_ids = data
         device = next(self.parameters()).device
         input_ids = input_ids.to(device, non_blocking=True)
         # (batch_size, seq_len, hidden_size)

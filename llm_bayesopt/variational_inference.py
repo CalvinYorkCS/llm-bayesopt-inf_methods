@@ -29,7 +29,6 @@ class VariationalInference(Inference):
 
     def train(self, get_model, train_loader):
         # fine tune model
-        self.reset()
         model_for_ft = get_model().to(self.device)
         optimizer_ft = torch.optim.AdamW(model_for_ft.parameters(), lr=1e-3)
         loss_fn = torch.nn.MSELoss()
@@ -73,7 +72,7 @@ class VariationalInference(Inference):
             with pyro.plate("data", labels.size(0)):
                 preds = lifted_net(inputs).squeeze(-1)
                 noise = self.config.noise_std
-                pyro.sample("obs", dist.Normal(preds, noise).to_event(1), obs=labels) # added .to_event(1) 
+                pyro.sample("obs", dist.Normal(preds, noise).to_event(1), obs=labels) # TODO TEMP added .to_event(1)
 
         guide = AutoDiagonalNormal(model)
         optimizer = Adam({"lr": self.config.lr})
