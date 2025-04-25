@@ -44,3 +44,36 @@ class LaplaceConfig:
         self.online_marglik_freq = online_marglik_freq
         self.hessian_backend = hessian_backend
         self.last_layer_name = last_layer_name
+
+class VIConfig:
+    def __init__(
+        self,
+        batch_size: int = 16,
+        lr: float = 1e-3,
+        lr_lora: float = 3e-4,
+        wd: float = 0.01,
+        grad_clip: float = 0.0,
+        n_epochs: int = 50,
+        n_samples: int = 10,
+        kl_scale: float = 1.0,
+        init_logvar: float = -5.0,
+        prior_std: float = 1.0,
+        inference_method: str = "mean-field",
+        last_layer_name: str = "base_model.model.head.modules_to_save.default.2",
+        ft_epochs: int = 10,  # Added: Number of fine-tuning epochs
+        noise_std: float = 0.1,  # Added: Standard deviation of observation noise
+    ):
+        self.batch_size = batch_size
+        self.lr = lr
+        self.lr_lora = lr_lora
+        self.wd = wd
+        self.grad_clip = grad_clip
+        self.n_epochs = n_epochs
+        self.n_samples = n_samples
+        self.kl_scale = kl_scale
+        self.init_logvar = init_logvar
+        self.prior_std = prior_std
+        self.inference_method = inference_method
+        self.last_layer_name = last_layer_name
+        self.ft_epochs = ft_epochs  # Added
+        self.noise_std = noise_std  # Added

@@ -3,7 +3,7 @@ aiohttp==3.8.6
 aiosignal==1.3.1
 appdirs==1.4.4
 asdfghjkl==0.1a2
-asdl==0.1
+asdl==0.1.1 # changing from asdl==0.1
 async-timeout==4.0.3
 attrs==23.1.0
 backpack-for-pytorch==1.6.0
@@ -15,13 +15,13 @@ cffi==1.15.1
 charset-normalizer==3.2.0
 click==8.1.7
 colorama==0.4.6
-conda==23.3.1
-conda-libmamba-solver==23.3.0
-conda-package-handling==2.2.0
-conda_package_streaming==0.9.0
+# conda==23.3.1 # commented out for now
+# conda-libmamba-solver==23.3.0
+# conda-package-handling==2.2.0
+# conda_package_streaming==0.9.0
 contourpy==1.1.1
 cryptography==41.0.3
-curvlinops-for-pytorch==1.2.1.dev25+g7d498c3
+curvlinops-for-pytorch==2.0.1 # changing from 1.2.1.dev25+g7d498c3
 cycler==0.11.0
 datasets==2.19.0
 dill==0.3.7
@@ -46,12 +46,12 @@ joblib==1.3.2
 jsonpatch==1.32
 jsonpointer==2.0
 kiwisolver==1.4.5
-lapeft-bayesopt==1.0
+# lapeft-bayesopt==1.0 # install separately: pip install git+https://github.com/wiseodd/lapeft-bayesopt.git
 laplace-torch==0.1a2
-libmambapy==1.4.2
+# libmambapy==1.4.2 # install separately: conda install -c conda-forge libmambapy==1.4.2
 lightning-utilities==0.9.0
 linear-operator==0.5.1
-mamba==1.4.2
+# mamba==1.4.2  # Install via conda: conda install -c conda-forge mamba==1.4.2
 MarkupSafe==2.1.3
 matplotlib==3.7.2
 mpmath==1.3.0
@@ -75,12 +75,12 @@ protobuf==4.24.3
 psutil==5.9.5
 pyarrow==12.0.1
 pyarrow-hotfix==0.6
-pycosat==0.6.4
+pycosat==0.6.6 # changed from 0.6.4
 pycparser==2.21
 pyOpenSSL==23.2.0
 pyparsing==3.0.9
-PyQt5==5.15.9
-PyQt5-sip==12.12.2
+# PyQt5==5.15.9 # Installed via conda: conda install -c conda-forge pyqt=5.15.9
+# PyQt5-sip==12.12.2 # Installed via conda
 pyro-api==0.1.2
 pyro-ppl==1.8.6
 PySocks==1.7.1
@@ -118,7 +118,7 @@ torchvision==0.15.2
 tornado==6.3.3
 tqdm==4.66.1
 transformers==4.40.1
-triton==2.0.0
+# triton==2.0.0  # Skipped, not needed on macOS ARM64
 typeguard==2.13.3
 typing_extensions==4.7.1
 tzdata==2023.3

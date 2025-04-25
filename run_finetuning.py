@@ -19,7 +19,8 @@ from foundation_models import (
     get_gpt2_tokenizer,
     get_llama2_tokenizer,
 )
-from llm_bayesopt import LoRALLMBayesOpt
+from llm_bayesopt import LoRALLMBayesOpt, inference_method
+from llm_bayesopt.laplace_inference import LaplaceInference
 from bayesopt.acqf import ucb, ei, thompson_sampling
 from problems.data_processor import (
     RedoxDataProcessor,
@@ -31,7 +32,7 @@ from problems.data_processor import (
 )
 from problems.prompting import PromptBuilder
 from utils import helpers
-from utils.configs import LaplaceConfig, LLMFeatureType
+from utils.configs import LaplaceConfig, LLMFeatureType, VIConfig
 from peft import LoraConfig, get_peft_model
 from sklearn.preprocessing import StandardScaler
 import math
@@ -62,7 +63,7 @@ parser.add_argument(
     default="just-smiles",
 )
 parser.add_argument(
-    "--laplace_type", choices=["last_layer", "all_layer"], default="all_layer"
+    "--inference_method", choices=["vi", "last_layer", "all_layer"], default="all_layer"
 )
 parser.add_argument("--acqf", choices=["ei", "ucb", "ts"], default="ts")
 parser.add_argument("--n_init_data", type=int, default=10)
@@ -244,9 +245,16 @@ def get_model():
     #         print(n)
     return lora_model
 
-
+# TODO make this more unified with inference method too
 # Train + Laplace
-if args.laplace_type == "all_layer":
+if args.inference_method == "vi":
+    config = VIConfig(
+        n_epochs=50,
+        n_samples=20,
+        kl_scale=0.1,
+        inference_method="mean-field",
+    )
+elif args.inference_method == "all_layer":
     config = LaplaceConfig(
         n_epochs=50,
         noise_var=0.001,
@@ -270,12 +278,50 @@ if args.problem == "photoswitch":
 APPEND_EOS = args.foundation_model != "molformer" and (
     "t5" not in args.foundation_model
 )
+
+# Abstract model interface for inference methods
+class InferenceWrapper:
+    def __init__(self, method_name, config, device, dtype, append_eos):
+        if method_name == "laplace":
+            from llm_bayesopt.laplace_inference import LaplaceInference
+            self.inference = LaplaceInference(
+                laplace_config=config,
+                device=device,
+                dtype=dtype,
+                append_eos=append_eos,
+            )
+        elif method_name == "vi":
+            from llm_bayesopt.variational_inference import VariationalInference
+            self.inference = VariationalInference(
+                vi_config=config,  # Ensure config matches VI class expectations
+                device=device,
+                dtype=dtype,
+                # append_eos=append_eos,
+            )
+        else:
+            raise NotImplementedError(f"Inference method '{method_name}' not supported.")
+
+    def __call__(self, *args, **kwargs):
+        return self.inference(*args, **kwargs)
+
+    def __getattr__(self, attr):
+        return getattr(self.inference, attr)
+
+# Instantiate inference wrapper
+inference = InferenceWrapper(
+    method_name="laplace",  # <-- Replace with "vi" to use VI
+    config=config,
+    device="cuda",
+    dtype="float32",
+    append_eos=APPEND_EOS,
+)
+
 model = LoRALLMBayesOpt(
     get_model,
     dataset_train,
     data_processor,
+    inference,
     dtype="float32",
-    laplace_config=config,
     append_eos=APPEND_EOS,
 )
 
@@ -403,34 +449,34 @@ if not os.path.exists(path):
     os.makedirs(path)
 
 np.save(
-    f"{path}/timing_train_{args.n_init_data}_{args.acqf}_{args.laplace_type}_{args.randseed}.npy",
+    f"{path}/timing_train_{args.n_init_data}_{args.acqf}_{args.inference_method}_{args.randseed}.npy",
     timing_train,
 )
 np.save(
-    f"{path}/timing_preds_{args.n_init_data}_{args.acqf}_{args.laplace_type}_{args.randseed}.npy",
+    f"{path}/timing_preds_{args.n_init_data}_{args.acqf}_{args.inference_method}_{args.randseed}.npy",
     timing_preds,
 )
 
 np.save(
-    f"{path}/trace_acqvals_{args.n_init_data}_{args.acqf}_{args.laplace_type}_{args.randseed}.npy",
+    f"{path}/trace_acqvals_{args.n_init_data}_{args.acqf}_{args.inference_method}_{args.randseed}.npy",
     trace_acqvals,
 )
 
 if args.foundation_model == "molformer":
     np.save(
-        f"{path}/trace_best_y_{args.n_init_data}_{args.acqf}_{args.laplace_type}_{args.randseed}.npy",
+        f"{path}/trace_best_y_{args.n_init_data}_{args.acqf}_{args.inference_method}_{args.randseed}.npy",
         trace_best_y,
     )
     np.save(
-        f"{path}/trace_timing_{args.n_init_data}_{args.acqf}_{args.laplace_type}_{args.randseed}.npy",
+        f"{path}/trace_timing_{args.n_init_data}_{args.acqf}_{args.inference_method}_{args.randseed}.npy",
         trace_timing,
     )
 else:
     np.save(
-        f"{path}/{args.prompt_type}_trace_best_y_{args.n_init_data}_{args.acqf}_{args.laplace_type}_{args.randseed}.npy",
+        f"{path}/{args.prompt_type}_trace_best_y_{args.n_init_data}_{args.acqf}_{args.inference_method}_{args.randseed}.npy",
         trace_best_y,
     )
     np.save(
-        f"{path}/{args.prompt_type}_trace_timing_{args.n_init_data}_{args.acqf}_{args.laplace_type}_{args.randseed}.npy",
+        f"{path}/{args.prompt_type}_trace_timing_{args.n_init_data}_{args.acqf}_{args.inference_method}_{args.randseed}.npy",
         trace_timing,
     )
