@@ -32,7 +32,7 @@ from problems.data_processor import (
 )
 from problems.prompting import PromptBuilder
 from utils import helpers
-from utils.configs import LaplaceConfig, LLMFeatureType, VIConfig
+from utils.configs import LaplaceConfig, LLMFeatureType, VIConfig, MCDropoutConfig
 from peft import LoraConfig, get_peft_model
 from sklearn.preprocessing import StandardScaler
 import math
@@ -63,7 +63,7 @@ parser.add_argument(
     default="just-smiles",
 )
 parser.add_argument(
-    "--inference_method", choices=["vi", "last_layer", "all_layer"], default="all_layer"
+    "--inference_method", choices=["vi", "last_layer", "all_layer", "mcdropout"], default="all_layer"
 )
 parser.add_argument("--acqf", choices=["ei", "ucb", "ts"], default="ts")
 parser.add_argument("--n_init_data", type=int, default=10)
@@ -255,6 +255,13 @@ if args.inference_method == "vi":
         kl_scale=0.1,
         inference_method="mean-field",
     )
+elif args.inference_method == "mcdropout":
+    method_name = "mcdropout"
+    config = MCDropoutConfig(
+        n_epochs=50,
+        n_samples=20,
+        noise_var=0.001,
+    )
 elif args.inference_method == "all_layer":
     method_name="laplace"
     config = LaplaceConfig(
@@ -296,10 +303,17 @@ class InferenceWrapper:
         elif method_name == "vi":
             from llm_bayesopt.variational_inference import VariationalInference
             self.inference = VariationalInference(
-                vi_config=config,  # Ensure config matches VI class expectations
+                vi_config=config,
                 device=device,
                 dtype=dtype,
-                # append_eos=append_eos,
+            )
+        elif method_name == "mcdropout":
+            from llm_bayesopt.dropout_inference import MCDropoutInference
+            self.inference = MCDropoutInference(
+                mcdropout_config=config,
+                device=device,
+                dtype=dtype,
+                append_eos=append_eos,
             )
         else:
             raise NotImplementedError(f"Inference method '{method_name}' not supported.")

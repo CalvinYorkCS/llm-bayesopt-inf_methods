@@ -77,3 +77,23 @@ class VIConfig:
         self.last_layer_name = last_layer_name
         self.ft_epochs = ft_epochs  # Added
         self.noise_std = noise_std  # Added
+
+class MCDropoutConfig:
+    def __init__(
+        self,
+        n_epochs: int = 50,
+        batch_size: int = 16,
+        lr: float = 1e-3,
+        lr_lora: float = 3e-4,
+        grad_clip: float = 1.0,
+        n_samples: int = 20,  # Number of MC samples for inference
+        noise_var: float = 0.001,  # Observation noise variance
+    ):
+        self.n_epochs = n_epochs
+        self.batch_size = batch_size
+        self.lr = lr
+        self.lr_lora = lr_lora
+        self.grad_clip = grad_clip
+        self.n_samples = n_samples
+        self.noise_var = noise_var
+
