@@ -1,5 +1,6 @@
 import math
 import torch
+from torch import optim
 import pyro
 import pyro.distributions as dist
 from pyro.infer import SVI, Trace_ELBO
@@ -7,13 +8,18 @@ from pyro.optim import Adam
 from pyro.infer.autoguide import AutoDiagonalNormal
 from llm_bayesopt.inference_method import Inference  # assuming the base class is defined here
 from contextlib import nullcontext
+import tqdm
+from contextlib import nullcontext
+from transformers import get_scheduler
+from utils.configs import VIConfig
 
 class VariationalInference(Inference):
     """
     Mean-field Variational Inference using Pyro.
     """
-    def __init__(self, vi_config, device: str = "cuda", dtype: str = "float32"):
+    def __init__(self, vi_config: VIConfig, device: str = "cuda", dtype: str = "float32"):
         super().__init__(vi_config, device, dtype)
+        self.cfg = vi_config
         self.num_samples = getattr(vi_config, "num_samples", 20)
         self.ptdtype = {
             "float32": torch.float32,
@@ -27,23 +33,108 @@ class VariationalInference(Inference):
         )
         self.enable_grad_scaler = dtype in ["float16", "bfloat16"]
 
+    def fine_tune(self, model, train_loader):
+        loss_func = torch.nn.MSELoss()
+
+        lora_params = [
+            p for n, p in model.named_parameters() if p.requires_grad and "lora" in n
+        ]
+        head_params = [
+            p
+            for n, p in model.named_parameters()
+            if p.requires_grad and "lora" not in n
+        ]
+        optimizer_lora = optim.AdamW(lora_params, lr=self.cfg.lr_lora, weight_decay=5e-4)
+        optimizer_head = optim.AdamW(head_params, lr=self.cfg.lr, weight_decay=5e-4)
+
+        num_training_steps = self.cfg.n_epochs * len(train_loader)
+        scheduler_lora = get_scheduler(
+            name="linear",
+            optimizer=optimizer_lora,
+            # num_warmup_steps=0.06*num_training_steps,  # Following the warmup ratio in LoRA paper
+            num_warmup_steps=0,
+            num_training_steps=num_training_steps,
+        )
+        scheduler_head = get_scheduler(
+            name="cosine",
+            optimizer=optimizer_head,
+            # num_warmup_steps=0.06*num_training_steps,  # Following the warmup ratio in LoRA paper
+            num_warmup_steps=0,
+            num_training_steps=num_training_steps,
+        )
+        scaler = torch.cuda.amp.GradScaler(enabled=self.enable_grad_scaler)
+
+        for _ in tqdm.trange(
+            self.cfg.n_epochs, position=1, leave=False, desc="[Training]", colour="blue"
+        ):
+            # for _ in range(self.cfg.n_epochs):
+            for batch in train_loader:
+                model.train()
+                labels = batch["labels"].to(self.device, non_blocking=True)
+
+                with self.ctx:
+                    outputs = model(batch)
+                    # print(outputs.shape, labels.shape); input()
+                    loss = loss_func(outputs, labels)
+
+                scaler.scale(loss).backward()
+
+                if self.cfg.grad_clip != 0.0:
+                    scaler.unscale_(optimizer_lora)
+                    torch.nn.utils.clip_grad_norm_(lora_params, self.cfg.grad_clip)
+
+                scaler.step(optimizer_lora)
+                scaler.step(optimizer_head)
+                scaler.update()
+                scheduler_lora.step()
+                scheduler_head.step()
+                optimizer_lora.zero_grad(set_to_none=True)
+                optimizer_head.zero_grad(set_to_none=True)
+
+        for n, p in model.named_parameters():
+            if "lora" in n:
+                p.requires_grad = False
+
+        optimizer_head = optim.AdamW(head_params, lr=1e-3, weight_decay=5e-4)
+        scheduler_head = get_scheduler(
+            name="cosine",
+            optimizer=optimizer_head,
+            # num_warmup_steps=0.06*num_training_steps,  # Following the warmup ratio in LoRA paper
+            num_warmup_steps=0,
+            num_training_steps=num_training_steps,
+        )
+
+        for _ in tqdm.trange(
+            100, position=1, leave=False, desc="[Training]", colour="blue"
+        ):
+            # for _ in range(self.cfg.n_epochs):
+            for batch in train_loader:
+                model.train()
+                labels = batch["labels"].to(self.device, non_blocking=True)
+
+                with self.ctx:
+                    outputs = model(batch)
+                    # print(outputs.shape, labels.shape); input()
+                    loss = loss_func(outputs, labels)
+
+                scaler.scale(loss).backward()
+                scaler.step(optimizer_head)
+                scaler.update()
+                scheduler_head.step()
+                optimizer_head.zero_grad(set_to_none=True)
+
+        for n, p in model.named_parameters():
+            if "lora" in n:
+                p.requires_grad = True
+        
+        return model
+
     def train(self, get_model, train_loader):
         # fine tune model
         model_for_ft = get_model().to(self.device)
-        optimizer_ft = torch.optim.AdamW(model_for_ft.parameters(), lr=1e-3)
-        loss_fn = torch.nn.MSELoss()
 
         model_for_ft.train()
-        for epoch in range(self.config.ft_epochs):
-            for batch in train_loader:
-                inputs = batch["input_ids"].to(self.device)
-                labels = batch["labels"].to(self.device)
-                with self.ctx:
-                    preds = model_for_ft(inputs).squeeze(-1)
-                    loss = loss_fn(preds, labels)
-                optimizer_ft.zero_grad()
-                loss.backward()
-                optimizer_ft.step()
+        model_for_ft = self.fine_tune(model_for_ft, train_loader)        
 
         # Clear any previous Pyro parameters
         pyro.clear_param_store()

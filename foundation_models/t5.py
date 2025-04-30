@@ -44,9 +44,9 @@ class T5Regressor(nn.Module):
         return self.head(feat)
 
     def forward_features(self, data): 
-        input_ids = data
+        input_ids = data["input_ids"]
         device = next(self.parameters()).device
-        input_ids = input_ids.to(device, non_blocking=True)
+        input_ids = input_ids.to(device)
         # (batch_size, seq_len, hidden_size)
         feat = self.feature_extractor(input_ids).last_hidden_state
 

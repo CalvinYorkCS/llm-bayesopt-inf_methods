@@ -309,7 +309,7 @@ class InferenceWrapper:
 
 # Instantiate inference wrapper
 inference = InferenceWrapper(
-    method_name="vi",  # <-- Replace with "vi" to use VI
+    method_name="laplace",  # <-- Replace with "vi" to use VI
     config=config,
     device="cuda",
     dtype="float32",

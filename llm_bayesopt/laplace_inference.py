@@ -68,10 +68,7 @@ class LaplaceInference(Inference):
         )
         self.bnn = la
 
-    def _posthoc_laplace(self, get_model, train_loader):
-        model = get_model().to(self.device)  # Ensure that the base net is re-initialized - changed from self.get_model()...
-
-        model.train()
+    def fine_tune(self, model, train_loader):
         loss_func = nn.MSELoss()
 
         lora_params = [
@@ -165,6 +162,15 @@ class LaplaceInference(Inference):
         for n, p in model.named_parameters():
             if "lora" in n:
                 p.requires_grad = True
+
+        return model
+
+
+    def _posthoc_laplace(self, get_model, train_loader):
+        model = get_model().to(self.device)  # Ensure that the base net is re-initialized - changed from self.get_model()...
+
+        model.train()
+        model = self.fine_tune(model, train_loader)
 
         model.eval()
 
