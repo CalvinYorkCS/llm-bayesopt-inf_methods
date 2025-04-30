@@ -248,6 +248,7 @@ def get_model():
 # TODO make this more unified with inference method too
 # Train + Laplace
 if args.inference_method == "vi":
+    method_name="vi"
     config = VIConfig(
         n_epochs=50,
         n_samples=20,
@@ -255,6 +256,7 @@ if args.inference_method == "vi":
         inference_method="mean-field",
     )
 elif args.inference_method == "all_layer":
+    method_name="laplace"
     config = LaplaceConfig(
         n_epochs=50,
         noise_var=0.001,
@@ -264,6 +266,7 @@ elif args.inference_method == "all_layer":
         prior_prec_structure="layerwise",
     )
 else:
+    method_name="laplace"
     config = LaplaceConfig(
         n_epochs=30,
         noise_var=0.001,
@@ -309,7 +312,7 @@ class InferenceWrapper:
 
 # Instantiate inference wrapper
 inference = InferenceWrapper(
-    method_name="laplace",  # <-- Replace with "vi" to use VI
+    method_name=method_name,
     config=config,
     device="cuda",
     dtype="float32",
