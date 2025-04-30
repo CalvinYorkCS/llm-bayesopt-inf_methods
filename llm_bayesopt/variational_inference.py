@@ -161,7 +161,7 @@ class VariationalInference(Inference):
             lifted_net.train()
 
             with pyro.plate("data", labels.size(0)):
-                preds = lifted_net(inputs).squeeze(-1)
+                preds = lifted_net(batch).squeeze(-1)
                 noise = self.config.noise_std
                 pyro.sample("obs", dist.Normal(preds, noise).to_event(1), obs=labels) # TODO TEMP added .to_event(1)
 
@@ -200,7 +200,7 @@ class VariationalInference(Inference):
             )()
             sampled_model.eval()
             with torch.no_grad():
-                out = sampled_model(inputs).squeeze(-1)
+                out = sampled_model(batch).squeeze(-1)
             samples.append(out)
 
         preds = torch.stack(samples, dim=0)  # (S, B)
