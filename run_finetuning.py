@@ -21,6 +21,9 @@ from foundation_models import (
 )
 from llm_bayesopt import LoRALLMBayesOpt, inference_method
 from llm_bayesopt.laplace_inference import LaplaceInference
+from llm_bayesopt.variational_inference import VariationalInference
+from llm_bayesopt.ensemble_inference import EnsembleInference
+from llm_bayesopt.dropout_inference import MCDropoutInference
 from bayesopt.acqf import ucb, ei, thompson_sampling
 from problems.data_processor import (
     RedoxDataProcessor,
@@ -32,7 +35,7 @@ from problems.data_processor import (
 )
 from problems.prompting import PromptBuilder
 from utils import helpers
-from utils.configs import LaplaceConfig, LLMFeatureType, VIConfig, MCDropoutConfig
+from utils.configs import LaplaceConfig, LLMFeatureType, VIConfig, MCDropoutConfig, EnsembleConfig
 from peft import LoraConfig, get_peft_model
 from sklearn.preprocessing import StandardScaler
 import math
@@ -63,7 +66,7 @@ parser.add_argument(
     default="just-smiles",
 )
 parser.add_argument(
-    "--inference_method", choices=["vi", "last_layer", "all_layer", "mcdropout"], default="all_layer"
+    "--inference_method", choices=["vi", "last_layer", "all_layer", "mcdropout", "ensembles"], default="all_layer"
 )
 parser.add_argument("--acqf", choices=["ei", "ucb", "ts"], default="ts")
 parser.add_argument("--n_init_data", type=int, default=10)
@@ -255,6 +258,14 @@ if args.inference_method == "vi":
         kl_scale=0.1,
         inference_method="mean-field",
     )
+elif args.inference_method == "ensembles":
+    method_name = "ensembles"
+    config = EnsembleConfig(
+        n_models=5,
+        n_epochs=50,
+        n_samples=20,
+        noise_var=0.001,
+    )
 elif args.inference_method == "mcdropout":
     method_name = "mcdropout"
     config = MCDropoutConfig(
@@ -293,7 +304,6 @@ APPEND_EOS = args.foundation_model != "molformer" and (
 class InferenceWrapper:
     def __init__(self, method_name, config, device, dtype, append_eos):
         if method_name == "laplace":
-            from llm_bayesopt.laplace_inference import LaplaceInference
             self.inference = LaplaceInference(
                 laplace_config=config,
                 device=device,
@@ -301,14 +311,19 @@ class InferenceWrapper:
                 append_eos=append_eos,
             )
         elif method_name == "vi":
-            from llm_bayesopt.variational_inference import VariationalInference
             self.inference = VariationalInference(
                 vi_config=config,
                 device=device,
                 dtype=dtype,
             )
+        elif method_name == "ensembles":
+            self.inference = EnsembleInference(
+                mcdropout_config=config,
+                device=device,
+                dtype=dtype,
+                append_eos=append_eos,
+            )
         elif method_name == "mcdropout":
-            from llm_bayesopt.dropout_inference import MCDropoutInference
             self.inference = MCDropoutInference(
                 mcdropout_config=config,
                 device=device,

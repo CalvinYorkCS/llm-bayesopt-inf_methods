@@ -8,7 +8,7 @@ from llm_bayesopt.inference_method import Inference
 from utils.configs import MCDropoutConfig
 
 class MCDropoutInference(Inference):
-    def __init__(self, mcdropout_config, device, dtype, append_eos):
+    def __init__(self, mcdropout_config: MCDropoutConfig, device, dtype, append_eos):
         super().__init__(mcdropout_config, device, dtype)
         self.cfg = mcdropout_config
         self.append_eos = append_eos

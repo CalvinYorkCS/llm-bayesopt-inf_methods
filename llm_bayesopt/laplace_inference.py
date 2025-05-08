@@ -165,7 +165,6 @@ class LaplaceInference(Inference):
 
         return model
 
-
     def _posthoc_laplace(self, get_model, train_loader):
         model = get_model().to(self.device)  # Ensure that the base net is re-initialized - changed from self.get_model()...
 

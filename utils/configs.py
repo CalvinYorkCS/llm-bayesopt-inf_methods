@@ -97,3 +97,25 @@ class MCDropoutConfig:
         self.n_samples = n_samples
         self.noise_var = noise_var
 
+class EnsembleConfig:
+    def __init__(
+        self,
+        n_models=5,                # Number of models in the ensemble
+        bootstrap=False,           # Whether to use bootstrapped data for each model
+        n_epochs=10,               # Number of training epochs per model
+        lr=1e-4,                   # Learning rate for head parameters
+        lr_lora=1e-3,              # Learning rate for LoRA parameters
+        grad_clip=1.0,             # Gradient clipping value
+        noise_var=None,            # Fixed observation noise variance (if None, use model variance)
+        predict_variance=False,    # Whether models predict their own variance (not standard in deep ensembles)
+        finetune_head=True,        # Whether to fine-tune the head after training
+    ):
+        self.n_models = n_models
+        self.bootstrap = bootstrap
+        self.n_epochs = n_epochs
+        self.lr = lr
+        self.lr_lora = lr_lora
+        self.grad_clip = grad_clip
+        self.noise_var = noise_var
+        self.predict_variance = predict_variance
+        self.finetune_head = finetune_head
