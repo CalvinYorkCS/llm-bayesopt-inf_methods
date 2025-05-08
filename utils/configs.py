@@ -103,6 +103,7 @@ class EnsembleConfig:
         n_models=5,                # Number of models in the ensemble
         bootstrap=False,           # Whether to use bootstrapped data for each model
         n_epochs=10,               # Number of training epochs per model
+        batch_size: int = 16,
         lr=1e-4,                   # Learning rate for head parameters
         lr_lora=1e-3,              # Learning rate for LoRA parameters
         grad_clip=1.0,             # Gradient clipping value
@@ -113,6 +114,7 @@ class EnsembleConfig:
         self.n_models = n_models
         self.bootstrap = bootstrap
         self.n_epochs = n_epochs
+        self.batch_size = batch_size
         self.lr = lr
         self.lr_lora = lr_lora
         self.grad_clip = grad_clip

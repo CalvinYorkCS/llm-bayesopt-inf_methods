@@ -10,9 +10,9 @@ import copy
 import math
 
 class EnsembleInference(Inference):
-    def __init__(self, deep_ensemble_config: EnsembleConfig, device: str = "cuda", dtype: str = "float32", append_eos: bool = False):
-        super().__init__(deep_ensemble_config, device, dtype)
-        self.cfg = deep_ensemble_config
+    def __init__(self, ensemble_config: EnsembleConfig, device: str = "cuda", dtype: str = "float32", append_eos: bool = False):
+        super().__init__(ensemble_config, device, dtype)
+        self.cfg = ensemble_config
         self.append_eos = append_eos
         # Set up amp context, dtype mapping, etc.
         self.ptdtype = {

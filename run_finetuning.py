@@ -263,7 +263,6 @@ elif args.inference_method == "ensembles":
     config = EnsembleConfig(
         n_models=5,
         n_epochs=50,
-        n_samples=20,
         noise_var=0.001,
     )
 elif args.inference_method == "mcdropout":
@@ -318,7 +317,7 @@ class InferenceWrapper:
             )
         elif method_name == "ensembles":
             self.inference = EnsembleInference(
-                mcdropout_config=config,
+                ensemble_config=config,
                 device=device,
                 dtype=dtype,
                 append_eos=append_eos,
