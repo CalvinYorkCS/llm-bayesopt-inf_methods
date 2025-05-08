@@ -34,10 +34,7 @@ REAL_FEATURE_NAMES = FEATURE_NAMES_BASE + REAL_FEATURE_NAMES_LLM
 METHODS = [
     # 'random',
     # 'gp',
-    'laplace',
-    'vi',
-    'ensembles',
-    'mcdropout',
+    "laplace"
 ]
 PROBLEM2TITLE = {
     "redox-mer": "Redoxmer (1407)",
@@ -55,14 +52,7 @@ PROBLEM2LABEL = {
     "pce": "PCE",
     "photoswitch": "Wavelength",
 }
-METHOD2LABEL = {
-    "random": "RS", 
-    "gp": "GP", 
-    "laplace": "LA",
-    "vi": "VI",
-    "ensembles": "ENS",
-    "mcdropout": "MCD"
-}
+METHOD2LABEL = {"random": "RS", "gp": "GP", "laplace": "LA"}
 FEATURE2LABEL = {
     "fingerprints": "FP",
     "molformer": "MolFormer",
@@ -94,23 +84,12 @@ FEATURE2COLOR = {
         0.7058823529411765,
     ),
 }
-
-METHOD2COLOR = {
-    "laplace": (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
-    "vi": (0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
-    "ensembles": (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
-    "mcdropout": (1.0, 0.4980392156862745, 0.054901960784313725)
-}
-
 RANDSEEDS = [1, 2, 3, 4, 5]
 
-FILENAMES = {
-    "laplace": ["timing_train_10_ei_all_layer", "timing_preds_10_ei_all_layer"],
-    "vi": ["timing_train_10_ei_vi", "timing_preds_10_ei_vi"],
-    "ensembles": ["timing_train_10_ei_ensembles", "timing_preds_10_ei_ensembles"],
-    "mcdropout": ["timing_train_10_ei_mcdropout", "timing_preds_10_ei_mcdropout"]
-}
-
+FILENAMES = [
+    "timing_train_10_ei_all_layer",
+    "timing_preds_10_ei_all_layer",
+]
 YLABELS = [
     "Training Time (s)",
     "Pred. Time (s)",
@@ -132,9 +111,10 @@ for row_idx, (row, ylabel, fname) in enumerate(zip(axs, YLABELS, FILENAMES)):
         if problem is None:
             continue
 
-        # Plot each method
-        for method in METHODS:
-            real_feature_name = "t5-base-chem"
+        method = "laplace"
+
+        # Plot finetuned
+        for i, real_feature_name in enumerate(REAL_FEATURE_NAMES):
             path = f"results/{problem}/finetuning/{real_feature_name}"
 
             MAX_T = 100
@@ -175,12 +155,7 @@ for row_idx, (row, ylabel, fname) in enumerate(zip(axs, YLABELS, FILENAMES)):
         # ax.set_ylim(0, 50)
 
 
-handles, labels = [], []
-for method in METHODS:
-    line = plt.Line2D([0], [0], color=METHOD2COLOR[method], lw=2)
-    handles.append(line)
-    labels.append(METHOD2LABEL[method])
-
+handles, labels = axs.flatten()[-1].get_legend_handles_labels()
 fig.legend(
     handles,
     labels,

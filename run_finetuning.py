@@ -5,6 +5,7 @@ import tqdm
 import argparse
 import sys
 import os
+import time
 from foundation_models import (
     MolFormerRegressor,
     RobertaRegressor,
@@ -44,7 +45,7 @@ import math
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--problem",
-    choices=["redox-mer", "solvation", "kinase", "laser", "pce", "photoswitch"],
+    choices=["redox-mer", "solvation en", "kinase", "laser", "pce", "photoswitch"],
     default="redox-mer",
 )
 parser.add_argument(
@@ -342,7 +343,7 @@ class InferenceWrapper:
 inference = InferenceWrapper(
     method_name=method_name,
     config=config,
-    device="cuda",
+    device="mps",
     dtype="float32",
     append_eos=APPEND_EOS,
 )
@@ -374,10 +375,7 @@ timing_preds = []
 
 for i in pbar:
     # Timing
-    start = torch.cuda.Event(enable_timing=True)
-    end = torch.cuda.Event(enable_timing=True)
-    torch.cuda.synchronize()
-    start.record()
+    start = time.time()
 
     # BO iteration
     dataloader = data_processor.get_dataloader(
@@ -394,10 +392,7 @@ for i in pbar:
         leave=False,
     )
 
-    start_pred = torch.cuda.Event(enable_timing=True)
-    end_pred = torch.cuda.Event(enable_timing=True)
-    torch.cuda.synchronize()
-    start_pred.record()
+    start_pred = time.time()
 
     for data in sub_pbar:
         posterior = model.posterior(data)
@@ -413,9 +408,8 @@ for i in pbar:
         uncerts.append(f_var.sqrt())
         labels.append(data["labels"])
 
-    end_pred.record()
-    torch.cuda.synchronize()
-    timing_preds.append(start_pred.elapsed_time(end_pred) / 1000)
+    end_pred = time.time()
+    timing_preds.append((end_pred - start_pred))
 
     acq_vals = torch.cat(acq_vals, dim=0).cpu().squeeze()
     preds, uncerts, labels = (
@@ -446,17 +440,13 @@ for i in pbar:
     if best_y >= ground_truth_max:
         break
 
-    start_train = torch.cuda.Event(enable_timing=True)
-    end_train = torch.cuda.Event(enable_timing=True)
-    torch.cuda.synchronize()
-    start_train.record()
+    start_train = time.time()
 
     # Update surrogate
     model = model.condition_on_observations(new_data)
 
-    end_train.record()
-    torch.cuda.synchronize()
-    timing_train.append(start_train.elapsed_time(end_train) / 1000)
+    end_train = time.time()
+    timing_train.append((end_train - start_train))
 
     pbar.set_description(
         f"[Best f(x) = {helpers.y_transform(best_y_ori, MAXIMIZATION):.3f}, "
@@ -465,9 +455,8 @@ for i in pbar:
     )
 
     # Save results
-    end.record()
-    torch.cuda.synchronize()
-    timing = start.elapsed_time(end) / 1000
+    end = time.time()
+    timing = (end - start)
     trace_best_y[i + 1] = helpers.y_transform(best_y_ori, MAXIMIZATION)
     trace_timing[i + 1] = timing
 
